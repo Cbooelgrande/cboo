@@ -122,6 +122,10 @@
   .wf .step { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; margin: 10px 0 2px; font-weight: 700; }
   .q-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; }
   .q-actions small { color: var(--muted); font-size: 12px; }
+  .prev-pend { display: flex; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .prev-pend small { display: block; color: var(--text-secondary); margin-top: 4px; line-height: 1.4; }
+  .prev-pend button { flex-shrink: 0; }
+  @media (max-width: 700px) { .prev-pend { flex-direction: column; align-items: stretch; } }
   .warn { background: rgba(250,178,25,.1); color: #fad27a; font-size: 12px; border-radius: 10px; padding: 8px 10px; margin-top: 8px; }
 
   .chart-box { position: relative; height: 260px; }
@@ -298,6 +302,7 @@
   </div></div>
 
   <div class="section-h"><h2>💸 Reparto de quincenas</h2><p id="quinSub"></p></div>
+  <div id="quinPrev"></div>
   <div class="grid g-2" id="quincenas"></div>
 
   <div class="section-h"><h2>📊 Cómo vas</h2><p></p></div>
@@ -730,6 +735,10 @@ function renderQuincenas(m) {
   const [y, mo] = m.split('-').map(Number), pd = paydays(y, mo - 1), plan = planQuincenas();
   const today = todayISO();
   $('#quinSub').textContent = 'Primero los fijos, después los sobres. El día de pago tocas 🔒 Bloquear.';
+  const pp = pagoPrevioPendiente(m);
+  $('#quinPrev').innerHTML = pp ? `<div class="card flame-ring prev-pend"><div><b>⚠️ El pago del ${DIAS[pp.fecha.getDay()]} ${pp.fecha.getDate()} ${MESES[pp.fecha.getMonth()].slice(0, 3)} está sin repartir</b>
+      <small>Es la plata con la que vives hasta el 15. Mientras no la repartas, tus sobres no tienen nada y los gastos te dejan en negativo.</small></div>
+      <button class="primary" onclick="bloquear('${pp.m}', 2)">🔒 Bloquear y repartir</button></div>` : '';
   $('#quincenas').innerHTML = plan.map((p, i) => {
     const key = `${m}-${p.q}`, b = S.bloqueos[key], fecha = toISO(pd[i]);
     const montos = b ? b.montos : repartir(p.libre);
@@ -759,6 +768,15 @@ function renderQuincenas(m) {
             : `<small>Se reparte el ${fechaTxt}</small><button disabled>🔒 Bloquear</button>`}
       </div></div>`;
   }).join('');
+}
+
+// El pago del último día del mes se gasta en el mes siguiente: si quedó sin repartir, avisar.
+function pagoPrevioPendiente(m) {
+  if (m !== ym(todayISO())) return null;
+  const prev = shiftMonth(m, -1);
+  if (prev < S.inicio || S.bloqueos[`${prev}-2`] || S.bloqueos[`${m}-1`]) return null;
+  const [y, mo] = prev.split('-').map(Number);
+  return { m: prev, fecha: paydays(y, mo - 1)[1] };
 }
 
 function bloquear(m, q) {
@@ -949,6 +967,13 @@ function analizar(m) {
     add(atraso >= 2 ? 'alerta' : 'ojo', `${q === 1 ? '1ra' : '2da'} quincena sin repartir${atraso ? ` (hace ${atraso} días)` : ''}`,
       atraso >= 2 ? 'Plata suelta es plata que se gasta. Ve arriba y dale 🔒 Bloquear YA.' : 'Te pagaron hoy. Antes de gastar un colón, reparte: 🔒 Bloquear y repartir.');
   });
+
+  const pp = pagoPrevioPendiente(m);
+  if (pp) {
+    const atraso = Math.round((hoy - new Date(toISO(pp.fecha) + 'T12:00')) / 864e5);
+    add(atraso >= 2 ? 'alerta' : 'ojo', `El pago del ${pp.fecha.getDate()} ${MESES[pp.fecha.getMonth()].slice(0, 3)} sigue sin repartir${atraso ? ` (hace ${atraso} días)` : ''}`,
+      'Estás gastando plata que nunca repartiste. Por eso tus sobres dan negativo. Dale 🔒 Bloquear y repartir arriba, YA.');
+  }
 
   // Fijos
   const pag = S.pagados[m] || [], sinPagar = S.fijos.filter(f => !pag.includes(f.id));
