@@ -1456,10 +1456,11 @@ async function sincronizar() {
   finally { SYNC.busy = false; if (SYNC.again) { SYNC.again = false; syncPronto(); } }
 }
 async function conectarSync(repo, token, pass, pass2) {
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) throw new Error('El repo va como usuario/nombre, ej: Cbooelgrande/cboo-datos');
   SYNC.cfg = { repo, token };
   const info = await gh('');
   if (info.status === 401) throw new Error('El token no es válido');
-  if (info.status === 404) throw new Error('No encuentro ese repo, o el token no tiene acceso a él');
+  if (info.status === 404) throw new Error('No encuentro ese repo, o el token no tiene acceso a él. Revisa: el repo escrito exacto (Cbooelgrande/cboo-datos) y que el token tenga "Only select repositories → cboo-datos" y Contents: Read and write.');
   if (!info.ok) throw new Error(`GitHub respondió ${info.status}`);
   if (!(await info.json()).private) throw new Error('Ese repositorio es PÚBLICO. Por seguridad tiene que ser privado.');
   const remoto = await leerRemoto();
@@ -1510,7 +1511,7 @@ $('#formSync').addEventListener('submit', async e => {
   const f = e.target, msg = $('#syncMsg'), btn = $('#syncConnect');
   btn.disabled = true; msg.className = 'status'; msg.textContent = '🔐 Conectando y cifrando… (unos segundos)';
   try {
-    await conectarSync(f.repo.value.trim().replace(/^https:\/\/github\.com\//, '').replace(/\/$/, ''), f.token.value.trim(), f.pass.value, f.pass2.value);
+    await conectarSync(f.repo.value.replace(/\s/g, '').replace(/^(https?:\/\/)?(www\.)?github\.com\//i, '').replace(/\.git$/i, '').replace(/\/+$/, ''), f.token.value.replace(/\s/g, ''), f.pass.value, f.pass2.value);
     $('#dlgSync').close(); toast('☁️ ¡Sincronización activada!');
   } catch (err) { msg.className = 'status bad'; msg.textContent = '⚠️ ' + err.message; Object.assign(SYNC, { key: null }); }
   finally { btn.disabled = false; }

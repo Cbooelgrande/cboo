@@ -1,6 +1,6 @@
 // Cboo$$ service worker: permite abrir la app sin internet.
 // Nunca toca las llamadas a GitHub (sincronización): solo archivos propios de la app.
-const VERSION = 'cboo-v4';
+const VERSION = 'cboo-v5';
 const BASE = ['./', './index.html', './manifest.webmanifest', './vendor/chart.umd.min.js', './icono-192.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
