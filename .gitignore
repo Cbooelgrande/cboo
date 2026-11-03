@@ -1,0 +1,8 @@
+# ⚠️ Nunca subir datos personales
+datos/
+archivo/
+*.json.bak
+# Entorno local
+.venv/
+__pycache__/
+*.pyc
